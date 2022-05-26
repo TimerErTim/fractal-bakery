@@ -3,6 +3,8 @@ use std::str::FromStr;
 
 use decimal::d128;
 
+use crate::rendering_settings::Resolution;
+
 mod interpolatable;
 mod complex;
 mod fractal;
@@ -16,7 +18,7 @@ fn main() {
         width: 3840,
         height: 2190,
     };
-    let max_iterations = BigInt::from_str("2000").unwrap();
+    let max_iterations = 2000;
     let real_center = d128!(-0.749993);
     let imaginary_center = d128!(0.005);
 
@@ -36,12 +38,12 @@ fn main() {
             let real_c = pixel_step * (d128::from(x) - d128::from(resolution.width) / d128!(2.0)) + real_center;
             let imaginary_c = pixel_step * (d128::from(resolution.height) / d128!(2.0) - d128::from(y)) + imaginary_center;
 
-            let mut iteration = BigInt::zero();
+            let mut iteration = 0u128;
             let mut real_z = d128::zero();
             let mut imaginary_z = d128::zero();
             let big_4 = d128!(4);
             while iteration < max_iterations && real_z * real_z + imaginary_z * imaginary_z < big_4 {
-                iteration += 1u8;
+                iteration += 1;
                 let prev_real_z = real_z;
                 real_z = real_z * real_z - imaginary_z * imaginary_z + real_c;
                 imaginary_z = prev_real_z * imaginary_z + prev_real_z * imaginary_z + imaginary_c;
@@ -52,9 +54,9 @@ fn main() {
             } else {
                 let abs = real_z * real_z + imaginary_z * imaginary_z;
                 let add = abs.ln().ln() / ln_of_2;
-                let final_iteration = iteration.to_f32().unwrap() + 1.0f32 - f32::from_str(add.to_string().as_str()).unwrap();
-                let max_iterations_f32 = max_iterations.to_f32().unwrap();
-                let gray = ((max_iterations_f32 - final_iteration) / max_iterations_f32);
+                let final_iteration = iteration as f64 + 1.0f64 - f64::from_str(add.to_string().as_str()).unwrap();
+                let max_iterations_f32 = max_iterations as f64;
+                let gray = ((max_iterations_f32 - final_iteration) / max_iterations_f32) as f32;
                 image::Rgb([1.0f32, gray, gray])
             };
 

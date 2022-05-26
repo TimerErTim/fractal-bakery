@@ -1,13 +1,14 @@
-use decimal::d128;
+use std::marker::PhantomData;
+use std::str::FromStr;
 
-use crate::interpolatable::Interpolation::EXPONENTIAL;
+use decimal::d128;
 
 #[derive(Copy, Clone)]
 pub enum Interpolation {
     LINEAR,
     CUBIC,
     NEAREST,
-    EXPONENTIAL(f64),
+    EASING(f64),
 }
 
 impl Interpolation {
@@ -15,7 +16,7 @@ impl Interpolation {
         Interpolator::new(self)
     }
 
-    pub fn interpolate<R, T: Interpolatable<R>>(self, first: T, ratio: f64, second: R) -> T::Output {
+    pub fn interpolate<R, T: Interpolatable<R>>(self, first: &T, ratio: f64, second: &R) -> T::Output {
         let mut interpolator = self.interpolator();
         interpolator.ratio = ratio;
         interpolator.interpolate(first, second)
@@ -46,8 +47,8 @@ impl Interpolator {
             Interpolation::NEAREST => {
                 this.interpolate_nearest(self.ratio, other)
             }
-            EXPONENTIAL(n) => {
-                this.interpolate_exponential(self.ratio, n, other)
+            Interpolation::EASING(n) => {
+                this.interpolate_ease(self.ratio, n, other)
             }
         }
     }
@@ -70,7 +71,7 @@ pub trait InterpolatablePrimitive<R> {
     fn interpolate_nearest(&self, ratio: f64, other: &R) -> Self::Output;
     fn interpolate_linear(&self, ratio: f64, other: &R) -> Self::Output;
     fn interpolate_cubic(&self, ratio: f64, other: &R) -> Self::Output;
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &R) -> Self::Output;
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &R) -> Self::Output;
 }
 
 impl InterpolatablePrimitive<i8> for i8 {
@@ -85,19 +86,19 @@ impl InterpolatablePrimitive<i8> for i8 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &i8) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as i8 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &i8) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as i8 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &i8) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &i8) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as i8 + self
     }
 }
 
@@ -113,19 +114,19 @@ impl InterpolatablePrimitive<i16> for i16 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &i16) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as i16 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &i16) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as i16 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &i16) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &i16) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as i16 + self
     }
 }
 
@@ -141,19 +142,19 @@ impl InterpolatablePrimitive<i32> for i32 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &i32) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as i32 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &i32) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as i32 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &i32) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &i32) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as i32 + self
     }
 }
 
@@ -169,19 +170,19 @@ impl InterpolatablePrimitive<i64> for i64 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &i64) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as i64 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &i64) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as i64 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &i64) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &i64) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as i64 + self
     }
 }
 
@@ -197,19 +198,19 @@ impl InterpolatablePrimitive<i128> for i128 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &i128) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as i128 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &i128) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as i128 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &i128) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &i128) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as i128 + self
     }
 }
 
@@ -225,19 +226,19 @@ impl InterpolatablePrimitive<u8> for u8 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &u8) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as u8 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &u8) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as u8 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &u8) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &u8) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as u8 + self
     }
 }
 
@@ -253,19 +254,19 @@ impl InterpolatablePrimitive<u16> for u16 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &u16) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as u16 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &u16) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as u16 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &u16) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &u16) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as u16 + self
     }
 }
 
@@ -281,19 +282,19 @@ impl InterpolatablePrimitive<u32> for u32 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &u32) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as u32 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &u32) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as u32 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &u32) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &u32) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as u32 + self
     }
 }
 
@@ -309,19 +310,19 @@ impl InterpolatablePrimitive<u64> for u64 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &u64) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as u64 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &u64) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as u64 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &u64) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &u64) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as u64 + self
     }
 }
 
@@ -337,19 +338,19 @@ impl InterpolatablePrimitive<u128> for u128 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &u128) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as u128 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &u128) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as u128 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &u128) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &u128) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as u128 + self
     }
 }
 
@@ -365,19 +366,19 @@ impl InterpolatablePrimitive<f32> for f32 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &f32) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as f32 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &f32) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as f32 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &f32) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &f32) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        (((other - self) as f64 * (k * ratio + ratio)) / (k * ratio + 1f64)) as f32 + self
     }
 }
 
@@ -393,19 +394,21 @@ impl InterpolatablePrimitive<f64> for f64 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &f64) -> Self::Output {
-        (other - self) * ratio + self
+        (((other - self) as f64) * ratio) as f64 + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &f64) -> Self::Output {
-        let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        let difference = (self - other) as f64;
+        (2f64 * difference * ratio * ratio * ratio -
+            3f64 * difference * ratio * ratio) as f64 +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &f64) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &f64) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        ((other - self) * (k * ratio + ratio)) / (k * ratio + 1f64) + self
+        // let k = bias.exp();
+        // ((other - self) * ratio * factor) / (ratio * k - ratio + 1f64) + self
     }
 }
 
@@ -421,19 +424,21 @@ impl InterpolatablePrimitive<d128> for d128 {
     }
 
     fn interpolate_linear(&self, ratio: f64, other: &d128) -> Self::Output {
-        (other - self) * ratio + self
+        ((other - self) * d128::from_str(&*ratio.to_string()).unwrap()) + self
     }
 
     fn interpolate_cubic(&self, ratio: f64, other: &d128) -> Self::Output {
+        let ratio = d128::from_str(ratio.to_string().as_str()).unwrap();
         let difference = self - other;
-        2 * difference * ratio * ratio * ratio -
-            3 * difference * ratio * ratio +
+        d128!(2) * difference * ratio * ratio * ratio -
+            d128!(3) * difference * ratio * ratio +
             self
     }
 
-    fn interpolate_exponential(&self, ratio: f64, exponent: f64, other: &d128) -> Self::Output {
-        let a = -1 + self;
-        (ratio.pow(exponent) * ((other - a) as f64).ln()).exp() + a
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &d128) -> Self::Output {
+        let k = d128::from_str(&*(bias.exp() - 1f64).to_string()).unwrap();
+        let ratio = d128::from_str(&*ratio.to_string()).unwrap();
+        ((other - self) * (k * ratio + ratio)) / (k * ratio + d128!(1)) + self
     }
 }
 
@@ -541,16 +546,27 @@ impl Interpolatable<d128> for d128 {
     }
 }
 
-pub struct InterpolatableLocation<R, T: Interpolatable<R>> {
-    pub(crate) value: T,
+pub struct InterpolatableLocation<'a, R, T: Interpolatable<R>> {
+    pub(crate) value: &'a T,
     pub(crate) location: f64,
+    type_r: PhantomData<R>,
 }
 
-impl<R, T: Interpolatable<R>> Interpolatable<InterpolatableLocation<R, T>>
-for InterpolatableLocation<R, T> {
+impl<R, T: Interpolatable<R>> InterpolatableLocation<'_, R, T> {
+    pub fn new(value: &T, location: f64) -> InterpolatableLocation<R, T> {
+        InterpolatableLocation {
+            value,
+            location,
+            type_r: PhantomData,
+        }
+    }
+}
+
+impl<C, R: Interpolatable<C>, T: Interpolatable<R>> Interpolatable<InterpolatableLocation<'_, C, R>>
+for InterpolatableLocation<'_, R, T> {
     type Output = T::Output;
 
-    fn interpolate(&self, interpolator: &Interpolator, other: &InterpolatableLocation<R, T>) -> Self::Output {
+    fn interpolate(&self, interpolator: &Interpolator, other: &InterpolatableLocation<C, R>) -> Self::Output {
         let range = other.location - self.location;
         let relative_location = interpolator.ratio - self.location;
 
@@ -558,11 +574,11 @@ for InterpolatableLocation<R, T> {
 
         if range == 0f64 {
             interpolator.ratio = 0.5f64;
-            interpolator.interpolate(&self.value, &other.value)
+            interpolator.interpolate(self.value, other.value)
         } else {
             let scaled_ratio = relative_location / range;
             interpolator.ratio = scaled_ratio;
-            interpolator.interpolate(&self.value, &other.value)
+            interpolator.interpolate(self.value, other.value)
         }
     }
 }

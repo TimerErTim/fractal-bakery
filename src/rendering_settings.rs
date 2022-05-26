@@ -4,8 +4,8 @@ pub struct RenderingSettings {
 }
 
 pub struct Resolution {
-    width: u32,
-    height: u32,
+    pub(crate) width: u32,
+    pub(crate) height: u32,
 }
 
 pub enum MultiSampling {
