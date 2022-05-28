@@ -6,11 +6,11 @@ use crate::interpolatable;
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Color {
     /// Red component: 0.0 - 1.0
-    red: f32,
+    pub(crate) red: f32,
     /// Green component: 0.0 - 1.0
-    green: f32,
+    pub(crate) green: f32,
     /// Blue component: 0.0 - 1.0
-    blue: f32,
+    pub(crate) blue: f32,
 }
 
 impl Color {
@@ -83,6 +83,27 @@ impl Color {
             (self.green + other.green) / 2f32,
             (self.blue + other.blue) / 2f32,
         )
+    }
+
+    pub fn average(colors: &mut impl Iterator<Item=Color>) -> Color {
+        let mut amount = 0;
+
+        let mut red = 0f32;
+        let mut green = 0f32;
+        let mut blue = 0f32;
+
+        for color in colors {
+            red += color.red;
+            green += color.green;
+            blue += color.blue;
+            amount += 1;
+        }
+
+        Color {
+            red: red / amount as f32,
+            green: green / amount as f32,
+            blue: blue / amount as f32,
+        }
     }
 }
 
