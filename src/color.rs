@@ -85,14 +85,34 @@ impl Color {
         )
     }
 
-    pub fn average(colors: &mut impl Iterator<Item=Color>) -> Color {
-        let mut amount = 0;
+    pub fn average(colors: &Vec<Color>) -> Color {
+        let len = colors.len() as f32;
 
         let mut red = 0f32;
         let mut green = 0f32;
         let mut blue = 0f32;
 
         for color in colors {
+            red += color.red;
+            green += color.green;
+            blue += color.blue;
+        }
+
+        Color {
+            red: red / len,
+            green: green / len,
+            blue: blue / len,
+        }
+    }
+
+    pub fn average_iterator(colors_iter: &mut impl Iterator<Item=Color>) -> Color {
+        let mut amount = 0;
+
+        let mut red = 0f32;
+        let mut green = 0f32;
+        let mut blue = 0f32;
+
+        for color in colors_iter {
             red += color.red;
             green += color.green;
             blue += color.blue;

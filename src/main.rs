@@ -12,6 +12,7 @@ mod rendering_settings;
 mod color;
 mod color_palette;
 mod mandelbrot;
+mod interpolation_list;
 
 fn main() {
     let resolution = Resolution {

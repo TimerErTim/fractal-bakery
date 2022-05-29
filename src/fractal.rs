@@ -19,7 +19,7 @@ pub trait FractalRepresentation {
 }
 
 pub struct FractalCalculatedPoint {
-    iterations: [f64; 4],
+    iterations: [f64; 1],
 }
 
 impl FractalCalculatedPoint {
@@ -55,7 +55,7 @@ impl FractalCalculatedPoint {
         let color = Color::new(red / colors.len() as f32, green / colors.len() as f32, blue / colors.len() as f32);
 */
 
-        (Color::average(&mut colors), elapsed)
+        (Color::average_iterator(&mut colors), elapsed)
     }
 }
 
@@ -87,7 +87,7 @@ mod tests {
 
         for i in 0..2160 * 3840 {
             let fractal_point = FractalCalculatedPoint {
-                iterations: [50f64, 100f64, 0f64, 500f64]
+                iterations: [50f64]
             };
 
             let (color, elapsed) = fractal_point.get_color(&color_palette);
