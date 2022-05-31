@@ -36,7 +36,7 @@ impl<T: Interpolatable<T, Output=T>> InterpolationList<T> {
         let link = {
             InterpolationListLink::<T> {
                 interpolation,
-                length,
+                //length,
                 left_value: Rc::new(old_last_entry),
             }
         };
@@ -104,7 +104,7 @@ impl<T: Interpolatable<T, Output=T>> InterpolationList<T> {
 
 struct InterpolationListLink<T: Interpolatable<T, Output=T>> {
     interpolation: Interpolation,
-    length: u64,
+    //length: u64,
     left_value: Rc<InterpolationListValue<T>>,
 }
 

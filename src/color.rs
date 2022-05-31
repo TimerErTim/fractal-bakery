@@ -13,8 +13,8 @@ pub struct Color {
     pub(crate) blue: f32,
 }
 
-impl Color {
-    pub fn default() -> Color {
+impl Default for Color {
+    fn default() -> Color {
         Color::WHITE
     }
 }
@@ -138,3 +138,79 @@ impl Interpolatable<Color> for Color {
     }
 }
 
+
+#[cfg(test)]
+mod test {
+    use crate::color::Color;
+    use crate::interpolatable::Interpolation;
+
+    #[test]
+    fn basics() {
+        let out_of_bounds_color = Color::new(-1f32, 0.6f32, 1.24);
+
+        assert_eq!(out_of_bounds_color, Color {
+            red: 0f32,
+            green: 0.6f32,
+            blue: 1f32,
+        });
+
+        assert_eq!(Color::default(), Color::WHITE);
+    }
+
+    #[test]
+    fn mixing() {
+        assert_eq!(Color::BLACK.mix(&Color::WHITE), Color {
+            red: 0.5,
+            green: 0.5,
+            blue: 0.5,
+        });
+
+        assert_eq!(Color::BLUE.mix(&Color::WHITE), Color {
+            red: 0.5,
+            green: 0.5,
+            blue: 1f32,
+        });
+
+        assert_eq!(Color::BLUE.mix(&Color::WHITE), Color::WHITE.mix(&Color::BLUE));
+
+        assert_eq!(Color::RED.mix(&Color::GREEN), Color {
+            red: 0.5,
+            green: 0.5,
+            blue: 0f32,
+        });
+
+        let red_and_green = Color::RED.mix(&Color::GREEN);
+        assert_eq!(Color::YELLOW.mix(&red_and_green), Color {
+            red: 0.75,
+            green: 0.75,
+            blue: 0f32,
+        });
+        assert_eq!(Color::YELLOW.mix(&red_and_green), red_and_green.mix(&Color::YELLOW));
+
+
+        let mut colors = vec![Color::RED, Color::GREEN, Color::BLUE, Color::BLACK];
+        assert_eq!(Color::average(&mut colors), Color {
+            red: 0.25,
+            green: 0.25,
+            blue: 0.25,
+        });
+        assert_eq!(Color::average(&mut colors), Color::average_iterator(&mut colors.into_iter()));
+    }
+
+    #[test]
+    fn interpolation() {
+        let mixture = Interpolation::LINEAR.interpolate(&Color::RED, 0.25, &Color::GREEN);
+        assert_eq!(mixture, Color {
+            red: 0.75,
+            green: 0.25,
+            blue: 0f32,
+        });
+
+        let mixture = Interpolation::CUBIC.interpolate(&Color::RED, 0.2, &Color::GREEN);
+        assert_eq!(mixture, Color {
+            red: 0.896,
+            green: 0.104,
+            blue: 0f32,
+        });
+    }
+}

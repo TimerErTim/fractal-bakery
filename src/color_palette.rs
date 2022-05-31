@@ -70,7 +70,7 @@ impl ColorPalette for ScalingColorPalette {
     }
 
     fn get_color(&mut self, index: f64) -> &Color {
-        let index = ((index / self.scale) * PRECISION_FACTOR) as u64;
+        let index = (index * 100f64 * PRECISION_FACTOR / self.scale) as u64;
         self.key_color_list.get_buffered(index)
     }
 }
@@ -98,4 +98,80 @@ fn get_list_from_key_color(key_colors: Vec<KeyColor>, interpolation: Interpolati
     }
 
     key_list
+}
+
+
+#[cfg(test)]
+mod test {
+    use crate::color::Color;
+    use crate::color_palette::{ColorPalette, KeyColor, RepeatingColorPalette, ScalingColorPalette};
+    use crate::interpolatable::Interpolation;
+
+    #[test]
+    fn basics_repeating() {
+        let key_colors = vec![
+            KeyColor::new(0f64, Color::RED),
+            KeyColor::new(20f64, Color::BLUE),
+            KeyColor::new(10f64, Color::GREEN),
+        ];
+
+        let mut color_palette = RepeatingColorPalette::new(Interpolation::CUBIC, key_colors);
+
+        assert_eq!(*color_palette.get_color(-0.02f64), Color::RED);
+        assert_eq!(color_palette.get_color(5f64).blue, 0f32);
+        assert_eq!(*color_palette.get_color(10f64), Color::GREEN);
+        assert_eq!(*color_palette.get_color(20.01f64), Color::RED);
+        assert_eq!(*color_palette.get_color(20f64), Color::BLUE);
+
+
+        // Check outside range
+        let key_colors = vec![
+            KeyColor::new(5f64, Color::RED),
+            KeyColor::new(20f64, Color::BLUE),
+            KeyColor::new(10f64, Color::GREEN),
+        ];
+
+        let mut color_palette = RepeatingColorPalette::new(Interpolation::CUBIC, key_colors);
+
+        assert_eq!(*color_palette.get_color(3f64), Color::RED);
+    }
+
+    #[test]
+    fn basics_scaling() {
+        let key_colors = vec![
+            KeyColor::new(0f64, Color::RED),
+            KeyColor::new(50f64, Color::GREEN),
+            KeyColor::new(100f64, Color::BLUE),
+        ];
+
+        let mut color_palette = ScalingColorPalette::new(Interpolation::LINEAR, key_colors);
+        color_palette.set_max(200f64);
+
+        assert_eq!(*color_palette.get_color(100f64), Color::GREEN);
+        assert_eq!(color_palette.get_color(150f64).red, 0f32);
+        assert_eq!(*color_palette.get_color(250f64), Color::BLUE);
+        assert_eq!(*color_palette.get_color(-100f64), Color::RED);
+
+        color_palette.set_max(300f64);
+
+        assert_eq!(*color_palette.get_color(150f64), Color::GREEN);
+        assert_eq!(color_palette.get_color(175f64).red, 0f32);
+        assert_eq!(*color_palette.get_color(350f64), Color::BLUE);
+        assert_eq!(*color_palette.get_color(-15f64), Color::RED);
+
+
+        // check out of range
+        let key_colors = vec![
+            KeyColor::new(20f64, Color::RED),
+            KeyColor::new(50f64, Color::GREEN),
+            KeyColor::new(100f64, Color::BLUE),
+        ];
+
+        let mut color_palette = ScalingColorPalette::new(Interpolation::LINEAR, key_colors);
+        color_palette.set_max(200f64);
+
+        assert_eq!(*color_palette.get_color(10f64), Color::RED);
+        assert_eq!(*color_palette.get_color(40f64), Color::RED);
+        assert!(color_palette.get_color(40.1f64).red < 1f32);
+    }
 }
