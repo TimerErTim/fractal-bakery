@@ -86,6 +86,20 @@ impl<T: Interpolatable<T, Output=T>> InterpolationList<T> {
 
         current_link.interpolation.interpolate(&left_location, position as f64, &right_location)
     }
+
+    #[inline]
+    pub fn get_max_position(&self) -> u64 {
+        self.last_entry.sum_distance
+    }
+
+    #[inline]
+    pub fn get_min_position(&self) -> u64 {
+        if let Some(first_entry) = &self.first_entry {
+            first_entry.sum_distance
+        } else {
+            self.get_max_position()
+        }
+    }
 }
 
 struct InterpolationListLink<T: Interpolatable<T, Output=T>> {
@@ -184,5 +198,26 @@ mod test {
         // check list buffer still valid
         assert_eq!(*list.buffer.get(&15u64).unwrap(), 50);
         assert_eq!(*list.buffer.get(&23u64).unwrap(), 97);
+    }
+
+    #[test]
+    fn bounds() {
+        let mut list = InterpolationList::new(10, 0);
+
+        // check lowest and highest bound
+        assert_eq!(list.get_min_position(), 10);
+        assert_eq!(list.get_max_position(), 10);
+
+        list.insert(Interpolation::LINEAR, 10, 100);
+
+        // check new lowest and highest bound
+        assert_eq!(list.get_min_position(), 10);
+        assert_eq!(list.get_max_position(), 20);
+
+        list.insert(Interpolation::CUBIC, 20, 50);
+
+        // check even newer lowest and highest bound
+        assert_eq!(list.get_min_position(), 10);
+        assert_eq!(list.get_max_position(), 40);
     }
 }

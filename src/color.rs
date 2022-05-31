@@ -85,7 +85,7 @@ impl Color {
         )
     }
 
-    pub fn average(colors: &Vec<Color>) -> Color {
+    pub fn average(colors: &mut Vec<Color>) -> Color {
         let len = colors.len() as f32;
 
         let mut red = 0f32;
