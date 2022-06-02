@@ -19,6 +19,12 @@ impl<T> Complex<T> {
     }
 }
 
+impl<T: Default> Complex<T> {
+    pub fn default() -> Self {
+        Complex::new(T::default(), T::default())
+    }
+}
+
 impl<T: Add> Add<Complex<T>> for Complex<T> {
     type Output = Complex<T::Output>;
 

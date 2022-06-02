@@ -1,9 +1,16 @@
 use std::fs;
 use std::str::FromStr;
+use std::time::Instant;
 
 use decimal::d128;
 
-use crate::rendering_settings::Resolution;
+use crate::color::Color;
+use crate::color_palette::{ColorPalette, KeyColor, RepeatingColorPalette};
+use crate::complex::{Complex, ComplexF64};
+use crate::fractal::Configuration;
+use crate::interpolatable::Interpolation;
+use crate::mandelbrot::Mandelbrot;
+use crate::rendering_settings::{MultiSampling, RenderingSettings, Resolution};
 
 mod interpolatable;
 mod complex;
@@ -15,58 +22,36 @@ mod mandelbrot;
 mod interpolation_list;
 
 fn main() {
-    let resolution = Resolution {
-        width: 3840,
-        height: 2190,
-    };
-    let max_iterations = 2000;
-    let real_center = d128!(-0.749993);
-    let imaginary_center = d128!(0.005);
+    let mandelbrot = Mandelbrot::new(
+        ComplexF64::new(-0.5, 0.0),
+        0.0,
+        2000u128,
+        true,
+        Color::BLACK,
+    );
 
-    let zoom = d128!(1000000);
-
-    let pixel_step = if resolution.width as f32 * 1.5 > resolution.height as f32 {
-        d128!(2) / (zoom * d128::from(resolution.height))
-    } else {
-        d128!(3) / (zoom * d128::from(resolution.width))
+    let settings = RenderingSettings {
+        resolution: Resolution { width: 3840, height: 2160 },
+        sampling: MultiSampling::NONE,
     };
 
-    let ln_of_2 = d128!(2.0).ln();
-    let mut imgbuf = image::Rgb32FImage::new(resolution.width, resolution.height);
+    let key_colors = vec![
+        KeyColor::new(0f64, Color::CYAN),
+        KeyColor::new(4f64, Color::RED),
+        KeyColor::new(6f64, Color::BLUE),
+        KeyColor::new(20f64, Color::GREEN),
+        KeyColor::new(50f64, Color::YELLOW),
+        KeyColor::new(200f64, Color::MAGENTA),
+        KeyColor::new(1000f64, Color::CYAN),
+    ];
 
-    for x in 0..resolution.width {
-        for y in 0..resolution.height {
-            let real_c = pixel_step * (d128::from(x) - d128::from(resolution.width) / d128!(2.0)) + real_center;
-            let imaginary_c = pixel_step * (d128::from(resolution.height) / d128!(2.0) - d128::from(y)) + imaginary_center;
+    let mut color_palette = RepeatingColorPalette::new(Interpolation::CUBIC, key_colors);
 
-            let mut iteration = 0u128;
-            let mut real_z = d128::zero();
-            let mut imaginary_z = d128::zero();
-            let big_4 = d128!(4);
-            while iteration < max_iterations && real_z * real_z + imaginary_z * imaginary_z < big_4 {
-                iteration += 1;
-                let prev_real_z = real_z;
-                real_z = real_z * real_z - imaginary_z * imaginary_z + real_c;
-                imaginary_z = prev_real_z * imaginary_z + prev_real_z * imaginary_z + imaginary_c;
-            }
+    let current = Instant::now();
+    let image = mandelbrot.to_image(&settings, &mut color_palette);
+    println!("{:?}", current.elapsed());
 
-            let color = if iteration == max_iterations {
-                image::Rgb([0.0, 0.0, 0.0])
-            } else {
-                let abs = real_z * real_z + imaginary_z * imaginary_z;
-                let add = abs.ln().ln() / ln_of_2;
-                let final_iteration = iteration as f64 + 1.0f64 - f64::from_str(add.to_string().as_str()).unwrap();
-                let max_iterations_f32 = max_iterations as f64;
-                let gray = ((max_iterations_f32 - final_iteration) / max_iterations_f32) as f32;
-                image::Rgb([1.0f32, gray, gray])
-            };
-
-            let pixel = imgbuf.get_pixel_mut(x, y);
-            *pixel = color;
-        }
-        println!("{}", x);
-    }
-
+    println!("{}, {}", image.width(), image.height());
     fs::create_dir_all("out/").unwrap();
-    imgbuf.save("out/Fractal.png").unwrap();
+    image.save("out/Fractal.png").unwrap();
 }

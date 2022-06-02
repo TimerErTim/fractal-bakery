@@ -442,6 +442,31 @@ impl InterpolatablePrimitive<d128> for d128 {
     }
 }
 
+impl InterpolatablePrimitive<bool> for bool {
+    type Output = bool;
+
+    fn interpolate_nearest(&self, ratio: f64, other: &bool) -> Self::Output {
+        if ratio < 0.5 {
+            *self
+        } else {
+            *other
+        }
+    }
+
+    fn interpolate_linear(&self, ratio: f64, other: &bool) -> Self::Output {
+        self.interpolate_nearest(ratio, other)
+    }
+
+    fn interpolate_cubic(&self, ratio: f64, other: &bool) -> Self::Output {
+        self.interpolate_nearest(ratio, other)
+    }
+
+    fn interpolate_ease(&self, ratio: f64, bias: f64, other: &bool) -> Self::Output {
+        let k = bias.exp() - 1f64;
+        self.interpolate_nearest((k * ratio + ratio) / (k * ratio + 1f64), other)
+    }
+}
+
 impl Interpolatable<i8> for i8 {
     type Output = i8;
 
@@ -542,6 +567,14 @@ impl Interpolatable<d128> for d128 {
     type Output = d128;
 
     fn interpolate(&self, interpolator: &Interpolator, other: &d128) -> Self::Output {
+        interpolator.interpolate_primitive(self, other)
+    }
+}
+
+impl Interpolatable<bool> for bool {
+    type Output = bool;
+
+    fn interpolate(&self, interpolator: &Interpolator, other: &bool) -> Self::Output {
         interpolator.interpolate_primitive(self, other)
     }
 }

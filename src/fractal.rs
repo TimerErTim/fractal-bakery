@@ -1,32 +1,100 @@
-use std::time::{Instant, SystemTime};
-
-use iced::futures::stream::iter;
-use iced::futures::StreamExt;
+use image::{Rgb32FImage, RgbImage};
 
 use crate::color::Color;
 use crate::color_palette::ColorPalette;
 use crate::rendering_settings::RenderingSettings;
 
-pub trait Configuration {}
-
-pub trait Fractal {
-    fn calculate(&self, settings: &RenderingSettings) -> Box<dyn FractalRepresentation>;
+pub trait Configuration {
+    fn to_image(self, settings: &RenderingSettings, palette: &mut impl ColorPalette) -> RgbImage;
 }
 
-pub trait FractalRepresentation {
-    fn rendering_settings(&self) -> RenderingSettings;
-
-    fn colorize(&self, palette: &dyn ColorPalette) -> image::Rgb32FImage;
+pub trait Fractal<T: Colorizer> {
+    fn calculate(&self, settings: &RenderingSettings) -> FractalRepresentation<T>;
 }
 
-pub struct FractalCalculatedPoint {
-    iterations: [f64; 4],
+pub struct FractalRepresentation<T: Colorizer> {
+    colorizer: T,
+    rendering_settings: RenderingSettings,
+    iteration_map: Box<[Box<[FractalPoint]>]>,
 }
 
-impl FractalCalculatedPoint {
-    pub fn get_color(&self, color_palette: &mut impl ColorPalette) -> Color {
+impl<T: Colorizer> FractalRepresentation<T> {
+    pub fn new(colorizer: T, settings: RenderingSettings) -> Self {
+        let iteration_map_vec = {
+            let resolution = &settings.resolution;
+            (0..resolution.width).map(|_|
+                (0..resolution.height).map(|_|
+                    FractalPoint::new()
+                ).collect::<Vec<_>>().into_boxed_slice()
+            ).collect::<Vec<_>>()
+        };
+        let iteration_map = iteration_map_vec.into_boxed_slice();
+
+        Self {
+            colorizer,
+            rendering_settings: settings,
+            iteration_map,
+        }
+    }
+}
+
+impl<T: Colorizer> FractalRepresentation<T> {
+    fn rendering_settings(&self) -> &RenderingSettings {
+        &self.rendering_settings
+    }
+
+    pub fn colorize(&self, palette: &mut impl ColorPalette) -> RgbImage {
+        self.colorizer.setup_palette(palette);
+
+
+        let resolution = &self.rendering_settings.resolution;
+        let mut image = RgbImage::new(resolution.width, resolution.height);
+
+        for x in 0..resolution.width {
+            for y in 0..resolution.height {
+                let color = self.iteration_map[x as usize][y as usize]
+                    .get_color(&self.colorizer, palette);
+                image.put_pixel(x, y, color.to_rgb());
+            }
+        }
+
+        image
+    }
+
+    pub fn get_point_mut(&mut self, x: usize, y: usize) -> &mut FractalPoint {
+        &mut self.iteration_map[x][y]
+    }
+}
+
+pub trait Colorizer {
+    fn setup_palette(&self, color_palette: &mut impl ColorPalette);
+
+    fn get_color(&self, iterations: f64, color_palette: &mut impl ColorPalette) -> Color {
+        color_palette.get_color(iterations).clone()
+    }
+}
+
+pub struct FractalPoint {
+    iterations: Vec<f64>,
+}
+
+impl FractalPoint {
+    fn new() -> Self {
+        Self {
+            iterations: Vec::new()
+        }
+    }
+
+    pub fn add_iteration(&mut self, iterations: f64) {
+        self.iterations.push(iterations)
+    }
+}
+
+impl FractalPoint {
+    #[inline]
+    fn get_color(&self, colorizer: &impl Colorizer, color_palette: &mut impl ColorPalette) -> Color {
         let mut colors = self.iterations.iter()
-            .map(|x| color_palette.get_color(*x).clone());
+            .map(move |x| colorizer.get_color(*x, color_palette));
 
         Color::average_iterator(&mut colors)
     }
@@ -35,31 +103,5 @@ impl FractalCalculatedPoint {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
 
-    use crate::color::Color;
-    use crate::color_palette::{ColorPalette, KeyColor, RepeatingColorPalette};
-    use crate::fractal::FractalCalculatedPoint;
-    use crate::interpolatable::Interpolation;
-    use crate::rendering_settings::MultiSampling;
-
-    #[test]
-    fn get_sampled_color() {
-        let mut color_palette = RepeatingColorPalette::new(
-            Interpolation::LINEAR,
-            vec![
-                KeyColor::new(0f64, Color::RED),
-                KeyColor::new(100f64, Color::BLUE),
-                KeyColor::new(1000f64, Color::GREEN),
-            ],
-        );
-
-        for i in 0..2160 * 3840 {
-            let fractal_point = FractalCalculatedPoint {
-                iterations: [50f64, 100f64, 200f64, 0f64]
-            };
-
-            let _ = fractal_point.get_color(&mut color_palette);
-        }
-    }
 }

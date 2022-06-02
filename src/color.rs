@@ -1,3 +1,5 @@
+use image::Rgb;
+
 use interpolatable::Interpolatable;
 use interpolatable::Interpolator;
 
@@ -124,6 +126,20 @@ impl Color {
             green: green / amount as f32,
             blue: blue / amount as f32,
         }
+    }
+}
+
+impl Color {
+    pub fn to_rgb(self) -> Rgb<u8> {
+        Rgb([
+            (self.red * u8::MAX as f32) as u8,
+            (self.green * u8::MAX as f32) as u8,
+            (self.blue * u8::MAX as f32) as u8
+        ])
+    }
+
+    pub fn to_rgbf32(self) -> Rgb<f32> {
+        Rgb([self.red, self.green, self.blue])
     }
 }
 
