@@ -1,9 +1,6 @@
 use image::Rgb;
 
-use interpolatable::Interpolatable;
-use interpolatable::Interpolator;
-
-use crate::interpolatable;
+use crate::interpolation::interpolatable::{Interpolatable, Interpolator};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct Color {
@@ -157,6 +154,7 @@ impl Interpolatable<Color> for Color {
 
 #[cfg(test)]
 mod test {
+    use crate::{Color, Interpolation};
     use crate::color::Color;
     use crate::interpolatable::Interpolation;
 

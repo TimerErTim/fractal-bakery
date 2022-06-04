@@ -8,6 +8,8 @@ pub enum Interpolation {
     LINEAR,
     CUBIC,
     NEAREST,
+    /// Positive numbers result in a tendency to upper y, while negative numbers result in a
+    /// tendency to lower y. Everything greater than 5 or less than -5 is almost like a step.
     EASING(f64),
 }
 

@@ -3,8 +3,8 @@ use std::hash::BuildHasherDefault;
 use std::mem;
 use std::rc::Rc;
 
-use crate::interpolatable::{Interpolatable, InterpolatableLocation, Interpolation};
-use crate::interpolation_list::simple::SimpleHasher;
+use crate::interpolation::interpolatable::{Interpolatable, InterpolatableLocation, Interpolation};
+use crate::interpolation::interpolation_list::simple::SimpleHasher;
 
 pub struct InterpolationList<T: Interpolatable<T, Output=T>> {
     buffer: HashMap<u64, T, BuildHasherDefault<SimpleHasher>>,
@@ -157,6 +157,7 @@ mod simple {
 #[cfg(test)]
 mod test {
     use crate::interpolatable::Interpolation;
+    use crate::Interpolation;
 
     use super::InterpolationList;
 

@@ -3,16 +3,13 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::ops::Index;
 
-use iced::futures::stream::iter;
-
-use color::Color;
-
-use crate::color;
-use crate::interpolatable::{InterpolatableLocation, Interpolation};
-use crate::interpolation_list::InterpolationList;
+use crate::Color;
+use crate::interpolation::interpolatable::{InterpolatableLocation, Interpolation};
+use crate::interpolation::interpolation_list::InterpolationList;
 
 const PRECISION_FACTOR: f64 = 100f64;
 
+#[derive(Copy, Clone)]
 pub struct KeyColor {
     position: f64,
     color: Color,
@@ -103,7 +100,9 @@ fn get_list_from_key_color(key_colors: Vec<KeyColor>, interpolation: Interpolati
 
 #[cfg(test)]
 mod test {
+    use crate::{Color, ColorPalette, Interpolation, KeyColor, RepeatingColorPalette};
     use crate::color::Color;
+    use crate::color::color_palette::ScalingColorPalette;
     use crate::color_palette::{ColorPalette, KeyColor, RepeatingColorPalette, ScalingColorPalette};
     use crate::interpolatable::Interpolation;
 

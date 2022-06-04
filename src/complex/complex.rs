@@ -2,6 +2,8 @@ use std::ops::{Add, AddAssign, Mul, Sub, SubAssign};
 
 use decimal::d128;
 
+use crate::interpolation::interpolatable::{Interpolatable, Interpolator};
+
 #[derive(Copy, Clone)]
 pub struct Complex<T> {
     pub re: T,
@@ -63,5 +65,16 @@ impl<O, T: Sub<O, Output=T> + Copy> SubAssign<Complex<O>> for Complex<T> {
     fn sub_assign(&mut self, rhs: Complex<O>) {
         self.re = self.re - rhs.re;
         self.im = self.im - rhs.im;
+    }
+}
+
+
+impl<T: Interpolatable<T>> Interpolatable<Complex<T>> for Complex<T> {
+    type Output = Complex<T::Output>;
+
+    fn interpolate(&self, interpolator: &Interpolator, other: &Complex<T>) -> Self::Output {
+        let new_re = interpolator.interpolate(&self.re, &other.re);
+        let new_im = interpolator.interpolate(&self.im, &other.im);
+        Complex::new(new_re, new_im)
     }
 }

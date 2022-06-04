@@ -1,8 +1,7 @@
 use image::{Rgb32FImage, RgbImage};
 
-use crate::color::Color;
-use crate::color_palette::ColorPalette;
-use crate::rendering_settings::RenderingSettings;
+use crate::{ColorPalette, RenderingSettings};
+use crate::Color;
 
 pub trait Configuration {
     fn to_image(self, settings: &RenderingSettings, palette: &mut impl ColorPalette) -> RgbImage;

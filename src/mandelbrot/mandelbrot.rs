@@ -3,11 +3,11 @@ use std::f64::consts::LN_2;
 use decimal::d128;
 use image::{Rgb32FImage, RgbImage};
 
-use crate::color::Color;
-use crate::color_palette::ColorPalette;
-use crate::complex::{Complex, ComplexF128, ComplexF64};
-use crate::fractal::{Colorizer, Configuration, Fractal, FractalRepresentation};
-use crate::rendering_settings::RenderingSettings;
+use crate::Color;
+use crate::color::color_palette::ColorPalette;
+use crate::complex::complex::{Complex, ComplexF64};
+use crate::fractal::fractal::{Colorizer, Configuration, Fractal, FractalRepresentation};
+use crate::RenderingSettings;
 
 #[derive(Clone)]
 pub struct Mandelbrot {

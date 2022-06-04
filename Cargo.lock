@@ -590,6 +590,7 @@ dependencies = [
  "decimal",
  "iced",
  "image",
+ "rayon",
 ]
 
 [[package]]
