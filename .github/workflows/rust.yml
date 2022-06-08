@@ -1,0 +1,58 @@
+name: Rust Build
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master", "dev" ]
+
+ # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+  # Allows you to run this workflow from another workflow
+  workflow_call:
+  
+  release:
+    types: [ published, created, edited ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+  
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install latest stable
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+        default: true
+    
+    - name: Build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release --all-features --verbose
+    - name: Run tests
+      uses: actions-rs/cargo@v1
+      with:
+        command: test
+        args: --release --all-features --verbose
+      
+    - name: Upload build
+      uses: actions/upload-artifact@v3.1.0
+      with:
+         # Artifact name
+        name: Fractal_Bakery
+        # A file, directory or wildcard pattern that describes what to upload
+        path: target/release/fractal_bakery
+        # The desired behavior if no files are found using the provided path.
+        if-no-files-found: error
