@@ -44,6 +44,7 @@ jobs:
         with:
           command: build
           args: --release --all-features --verbose
+
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -56,6 +57,8 @@ jobs:
           # Artifact name
           name: FractalBakery_${{ matrix.os }}
           # A file, directory or wildcard pattern that describes what to upload
-          path: target/release/fractal_bakery
+          path: |
+            target/release/fractal_bakery
+            target/release/fractal_bakery.exe
           # The desired behavior if no files are found using the provided path.
           if-no-files-found: error
