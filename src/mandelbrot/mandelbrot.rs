@@ -68,7 +68,9 @@ impl Fractal<Mandelbrot> for Mandelbrot {
         } else {
             3f64 / (self.zoom_exponent.exp() * settings.resolution.width as f64)
         };
-        let er: f64 = if self.smoothing { 4.0 } else { 2.0 };
+        let re_samples = settings.sampling.samples_x();
+        let im_samples = settings.sampling.samples_y();
+        let er: f64 = if self.smoothing { 8.0 } else { 2.0 };
         let er_square = er * er;
         let er_ln = er.ln();
 
@@ -76,28 +78,45 @@ impl Fractal<Mandelbrot> for Mandelbrot {
             for y in 0..settings.resolution.height {
                 let point = representation.get_point_mut(x as usize, y as usize);
 
-                let c = Complex::new(
-                    pixel_step * (x as f64 - settings.resolution.width as f64 / 2.0),
-                    pixel_step * (settings.resolution.height as f64 / 2.0 - y as f64),
-                ) + self.center;
+                for re_sample in 0..re_samples {
+                    let x_pixel = x as f64 + re_sample as f64 / re_samples as f64;
+                    for im_sample in 0..im_samples {
+                        let y_pixel = y as f64 + im_sample as f64 / im_samples as f64;
 
-                let mut iteration = 0u128;
-                let mut z = ComplexF64::default();
-                while iteration < self.max_iterations && z.re * z.re + z.im * z.im < er_square {
-                    iteration += 1;
-                    z = z * z + c;
+                        let c = Complex::new(
+                            pixel_step * (x_pixel - settings.resolution.width as f64 / 2.0),
+                            pixel_step * (settings.resolution.height as f64 / 2.0 - y_pixel),
+                        ) + self.center;
+
+                        let mut iteration = 0u128;
+                        let mut z_re = 0.;
+                        let mut z_im = 0.;
+                        let mut z_re_square = 0.;
+                        let mut z_im_square = 0.;
+                        while iteration < self.max_iterations && z_re_square + z_im_square < er_square {
+                            // let mut z = ComplexF64::default();
+                            // z = z * z + c;
+
+                            z_im = (z_re + z_re) * z_im + c.im;
+                            z_re = z_re_square - z_im_square + c.re;
+                            z_re_square = z_re * z_re;
+                            z_im_square = z_im * z_im;
+
+                            iteration += 1;
+                        }
+
+                        let iteration = if self.smoothing && iteration < self.max_iterations {
+                            //let renormalized = (z.re * z.re + z.im * z.im).sqrt().ln().ln() / LN_2;
+                            //let iteration = iteration as f64 - escape_radius.ln().ln() / LN_2;
+                            //iteration + 1.0 - renormalized
+                            let compensation = (er_ln * (z_re_square + z_im_square).sqrt().ln()).ln() / LN_2;
+                            iteration as f64 + 1.0 - compensation
+                        } else {
+                            iteration as f64
+                        };
+                        point.add_iteration(iteration);
+                    }
                 }
-
-                let iteration = if self.smoothing && iteration < self.max_iterations {
-                    //let renormalized = (z.re * z.re + z.im * z.im).sqrt().ln().ln() / LN_2;
-                    //let iteration = iteration as f64 - escape_radius.ln().ln() / LN_2;
-                    //iteration + 1.0 - renormalized
-                    let compensation = (er_ln * (z.re * z.re + z.im * z.im).sqrt().ln()).ln() / LN_2;
-                    iteration as f64 + 1.0 - compensation
-                } else {
-                    iteration as f64
-                };
-                point.add_iteration(iteration);
             }
         }
 
