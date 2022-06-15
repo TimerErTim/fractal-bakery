@@ -1,7 +1,10 @@
+use std::slice::Iter;
+
 use image::{Rgb32FImage, RgbImage};
 
 use crate::{ColorPalette, RenderingSettings};
 use crate::Color;
+use crate::fractal::fractal_iterators::{FractalIterationIterator, FractalRepresentationIterator};
 
 pub trait Configuration {
     fn to_image(self, settings: &RenderingSettings, palette: &mut impl ColorPalette) -> RgbImage;
@@ -44,6 +47,7 @@ impl<T: Colorizer> FractalRepresentation<T> {
 
     pub fn colorize(&self, palette: &mut impl ColorPalette) -> RgbImage {
         self.colorizer.setup_palette(palette);
+        palette.prepare(self);
 
 
         let resolution = &self.rendering_settings.resolution;
@@ -60,8 +64,28 @@ impl<T: Colorizer> FractalRepresentation<T> {
         image
     }
 
+    pub fn iteration_iter(&self) -> FractalIterationIterator<T> {
+        FractalIterationIterator::new(self)
+    }
+
+    pub fn iter(&self) -> FractalRepresentationIterator<T> {
+        FractalRepresentationIterator::new(self)
+    }
+
     pub fn get_point_mut(&mut self, x: usize, y: usize) -> &mut FractalPoint {
         &mut self.iteration_map[x][y]
+    }
+
+    pub fn get_point(&self, x: usize, y: usize) -> &FractalPoint {
+        &self.iteration_map[x][y]
+    }
+
+    pub fn width(&self) -> u32 {
+        self.rendering_settings.resolution.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.rendering_settings.resolution.height
     }
 }
 
@@ -86,6 +110,10 @@ impl FractalPoint {
 
     pub fn add_iteration(&mut self, iterations: f64) {
         self.iterations.push(iterations)
+    }
+
+    pub fn iter(&self) -> Iter<f64> {
+        self.iterations.iter()
     }
 }
 

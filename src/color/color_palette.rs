@@ -1,11 +1,14 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
+use std::hash::BuildHasherDefault;
 use std::ops::Index;
 
 use crate::Color;
+use crate::fractal::fractal::{Colorizer, FractalRepresentation};
 use crate::interpolation::interpolatable::{InterpolatableLocation, Interpolation};
 use crate::interpolation::interpolation_list::InterpolationList;
+use crate::interpolation::interpolation_list::simple_hash::SimpleHasher;
 
 const PRECISION_FACTOR: f64 = 100f64;
 
@@ -25,8 +28,8 @@ impl KeyColor {
 }
 
 pub trait ColorPalette {
-    fn new(interpolation: Interpolation, key_colors: Vec<KeyColor>) -> Self where Self: Sized;
-    fn set_max(&mut self, max: f64);
+    fn set_max(&mut self, max: f64) {}
+    fn prepare(&mut self, fractal: &FractalRepresentation<impl Colorizer>) {}
     fn get_color(&mut self, index: f64) -> &Color;
 }
 
@@ -39,29 +42,50 @@ pub struct ScalingColorPalette {
     scale: f64,
 }
 
-impl ColorPalette for RepeatingColorPalette {
-    fn new(interpolation: Interpolation, key_colors: Vec<KeyColor>) -> Self {
+pub struct LogarithmicColorPalette {
+    key_color_list: InterpolationList<Color>,
+    pub base: f64,
+}
+
+pub struct ExponentialColorPalette {
+    key_color_list: InterpolationList<Color>,
+    pub exponent: f64,
+    max_iter: f64,
+}
+
+pub struct HistogramColorPalette {
+    key_color_list: InterpolationList<Color>,
+    max_iter: f64,
+    total: f64,
+    cumulative_iterations: Vec<u64>,
+    delta_iterations: Vec<u64>,
+}
+
+impl RepeatingColorPalette {
+    pub fn new(interpolation: Interpolation, key_colors: Vec<KeyColor>) -> Self {
         Self {
             key_color_list: get_list_from_key_color(key_colors, interpolation)
         }
     }
+}
 
-    fn set_max(&mut self, _: f64) {}
-
+impl ColorPalette for RepeatingColorPalette {
     fn get_color(&mut self, index: f64) -> &Color {
         let index = (index * PRECISION_FACTOR % (self.key_color_list.get_max_position() + 1) as f64) as u64;
         self.key_color_list.get_buffered(index)
     }
 }
 
-impl ColorPalette for ScalingColorPalette {
-    fn new(interpolation: Interpolation, key_colors: Vec<KeyColor>) -> Self {
+impl ScalingColorPalette {
+    pub fn new(interpolation: Interpolation, key_colors: Vec<KeyColor>) -> Self {
         Self {
             key_color_list: get_list_from_key_color(key_colors, interpolation),
             scale: 1f64,
         }
     }
+}
 
+impl ColorPalette for ScalingColorPalette {
     fn set_max(&mut self, max: f64) {
         self.scale = max;
     }
@@ -71,6 +95,96 @@ impl ColorPalette for ScalingColorPalette {
         self.key_color_list.get_buffered(index)
     }
 }
+
+impl LogarithmicColorPalette {
+    pub fn new(interpolation: Interpolation, key_colors: Vec<KeyColor>, base: f64) -> Self {
+        Self {
+            key_color_list: get_list_from_key_color(key_colors, interpolation),
+            base,
+        }
+    }
+}
+
+impl ColorPalette for LogarithmicColorPalette {
+    fn get_color(&mut self, index: f64) -> &Color {
+        let n = self.key_color_list.get_max_position() as f64;
+        let factor = ((index * PRECISION_FACTOR) / n + 1.0).log(self.base) % 1f64;
+        let pos = factor * n;
+        self.key_color_list.get_buffered(pos as u64)
+    }
+}
+
+impl ExponentialColorPalette {
+    pub fn new(interpolation: Interpolation, key_colors: Vec<KeyColor>, exponent: f64) -> Self {
+        Self {
+            key_color_list: get_list_from_key_color(key_colors, interpolation),
+            exponent,
+            max_iter: 0.0,
+        }
+    }
+}
+
+impl ColorPalette for ExponentialColorPalette {
+    fn set_max(&mut self, max: f64) {
+        self.max_iter = max;
+    }
+
+    fn get_color(&mut self, index: f64) -> &Color {
+        let n = self.key_color_list.get_max_position() as f64;
+        let pos = ((index / self.max_iter).powf(self.exponent) * n).powf(1.5) % (n + 1.);
+        self.key_color_list.get_buffered(pos as u64)
+    }
+}
+
+impl HistogramColorPalette {
+    pub fn new(interpolation: Interpolation, key_colors: Vec<KeyColor>) -> Self {
+        Self {
+            key_color_list: get_list_from_key_color(key_colors, interpolation),
+            max_iter: 0.0,
+            total: 0.0,
+            cumulative_iterations: Vec::new(),
+            delta_iterations: Vec::new(),
+        }
+    }
+}
+
+impl ColorPalette for HistogramColorPalette {
+    fn set_max(&mut self, max: f64) {
+        self.max_iter = max;
+    }
+
+    fn prepare(&mut self, fractal: &FractalRepresentation<impl Colorizer>) {
+        let mut iterations_map = HashMap::<u64, u64, BuildHasherDefault<SimpleHasher>>::with_hasher(
+            BuildHasherDefault::<SimpleHasher>::default()
+        );
+
+        for point in fractal.iteration_iter() {
+            *iterations_map.entry(point as u64).or_default() += 1;
+        }
+
+        self.cumulative_iterations.clear();
+        self.delta_iterations.clear();
+        let mut total: u64 = 0;
+        for i in 0..self.max_iter as u64 {
+            let count = *iterations_map.entry(i).or_default();
+            self.cumulative_iterations.push(total);
+            self.delta_iterations.push(count);
+            total += count;
+        }
+
+        self.total = total as f64;
+    }
+
+    fn get_color(&mut self, iterations: f64) -> &Color {
+        let index = iterations as usize;
+        let factor = (
+            self.cumulative_iterations[index] as f64 +
+                (iterations % 1.) * self.delta_iterations[index] as f64
+        ) / self.total * PRECISION_FACTOR;
+        self.key_color_list.get_buffered((factor * 100.) as u64)
+    }
+}
+
 
 struct KeyIntColor {
     position: u64,

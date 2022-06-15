@@ -4,7 +4,7 @@ use std::mem;
 use std::rc::Rc;
 
 use crate::interpolation::interpolatable::{Interpolatable, InterpolatableLocation, Interpolation};
-use crate::interpolation::interpolation_list::simple::SimpleHasher;
+use crate::interpolation::interpolation_list::simple_hash::SimpleHasher;
 
 pub struct InterpolationList<T: Interpolatable<T, Output=T>> {
     buffer: HashMap<u64, T, BuildHasherDefault<SimpleHasher>>,
@@ -124,7 +124,7 @@ impl<T: Interpolatable<T, Output=T>> InterpolationListValue<T> {
     }
 }
 
-mod simple {
+pub mod simple_hash {
     use std::hash::Hasher;
 
     #[derive(Default)]
