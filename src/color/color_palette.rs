@@ -215,10 +215,7 @@ fn get_list_from_key_color(key_colors: Vec<KeyColor>, interpolation: Interpolati
 #[cfg(test)]
 mod test {
     use crate::{Color, ColorPalette, Interpolation, KeyColor, RepeatingColorPalette};
-    use crate::color::Color;
     use crate::color::color_palette::ScalingColorPalette;
-    use crate::color_palette::{ColorPalette, KeyColor, RepeatingColorPalette, ScalingColorPalette};
-    use crate::interpolatable::Interpolation;
 
     #[test]
     fn basics_repeating() {

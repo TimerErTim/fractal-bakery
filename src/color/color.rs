@@ -155,8 +155,6 @@ impl Interpolatable<Color> for Color {
 #[cfg(test)]
 mod test {
     use crate::{Color, Interpolation};
-    use crate::color::Color;
-    use crate::interpolatable::Interpolation;
 
     #[test]
     fn basics() {

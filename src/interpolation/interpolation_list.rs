@@ -156,7 +156,6 @@ pub mod simple_hash {
 
 #[cfg(test)]
 mod test {
-    use crate::interpolatable::Interpolation;
     use crate::Interpolation;
 
     use super::InterpolationList;
